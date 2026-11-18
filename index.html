@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI视觉点击 · 网页版</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314161A'/%3E%3Ccircle cx='14' cy='14' r='6' fill='%23fff'/%3E%3Ccircle cx='14' cy='14' r='2.6' fill='%2314161A'/%3E%3Cpath d='M18 18l8 8' stroke='%23fff' stroke-width='2.4'/%3E%3C/svg%3E">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:#F4F3EF;color:#14161A;font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;font-size:14px;line-height:1.6;display:flex;flex-direction:column}
+header{position:sticky;top:0;z-index:20;background:rgba(244,243,239,.92);backdrop-filter:blur(8px);border-bottom:1px solid #DCDAD2;padding:10px 14px;display:flex;align-items:center;gap:10px}
+.dot{width:8px;height:8px;border-radius:50%;background:#B9B6AC;flex:0 0 auto}
+.dot.on{background:#1F7A5C}
+h1{font-size:16px;margin:0;font-weight:600;letter-spacing:.02em}
+.sub{font-size:11px;color:#78776F;margin-left:auto;text-align:right;max-width:52%}
+.btn{border:1px solid #14161A;background:#fff;color:#14161A;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;transition:background .15s,color .15s}
+.btn:hover{background:#14161A;color:#fff}
+.btn.solid{background:#C2410C;border-color:#C2410C;color:#fff}
+.btn.solid:hover{background:#9C330A;border-color:#9C330A}
+main#chat{flex:1;overflow-y:auto;padding:16px 14px 8px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:86%;padding:9px 12px;border-radius:12px;font-size:13px;white-space:pre-wrap;word-break:break-word}
+.msg.user{align-self:flex-end;background:#1F7A5C;color:#fff;border-bottom-right-radius:4px}
+.msg.ai{align-self:flex-start;background:#fff;border:1px solid #E2E0D8;border-bottom-left-radius:4px}
+.msg.think{align-self:flex-start;color:#8A8779;font-size:11px;background:transparent;padding:0 4px}
+.msg.sys{align-self:center;color:#8A8779;font-size:11px;text-align:center;max-width:92%}
+.msg.err{align-self:center;color:#A3302B;font-size:11.5px;text-align:center;max-width:92%}
+.msg img{display:block;max-width:100%;border-radius:8px;margin-top:6px;border:1px solid #E2E0D8}
+.tag{display:inline-block;font-size:10.5px;color:#C2410C;border:1px solid #E7C6B6;background:#FDF4EF;border-radius:4px;padding:1px 6px;margin-top:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.composer{border-top:1px solid #DCDAD2;background:#FBFAF7;padding:10px 14px 14px;display:flex;gap:8px;align-items:flex-end}
+textarea#input{flex:1;min-height:44px;max-height:140px;resize:none;border:1px solid #D3D0C6;border-radius:10px;padding:11px 12px;font-family:inherit;font-size:13px;background:#fff;color:#14161A;line-height:1.5}
+textarea#input:focus{outline:2px solid #C2410C33;border-color:#C2410C}
+.hint{font-size:11px;color:#8A8779;padding:0 14px 10px;margin-top:-4px}
+#shot{border:1px solid #D3D0C6;background:#fff;border-radius:10px;width:44px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:#565550}
+#shot:hover{border-color:#C2410C;color:#C2410C}
+#shot input{display:none}
+.modal{position:fixed;inset:0;background:rgba(20,22,26,.45);display:none;align-items:flex-end;z-index:40}
+.modal.show{display:flex}
+.sheet{background:#FBFAF7;width:100%;max-height:88%;overflow:auto;border-radius:16px 16px 0 0;padding:16px 16px 22px}
+.sheet h2{font-size:14px;margin:0 0 12px;font-weight:600}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11.5px;color:#6F6D64;margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;border:1px solid #D3D0C6;border-radius:8px;padding:9px 10px;font-size:12.5px;background:#fff;font-family:inherit;color:#14161A}
+.field textarea{min-height:64px;resize:vertical}
+.row{display:flex;gap:8px;margin-top:8px}
+.row .btn{flex:1}
+.note{font-size:11px;color:#8A8779;line-height:1.55;margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <h1>AI视觉点击 · 网页版</h1>
+  <span class="sub" id="sub">未配置接口</span>
+  <button class="btn" id="btnCfg">设置</button>
+</header>
+<main id="chat"></main>
+<div class="composer">
+  <label id="shot" title="上传手机截图，让模型判断该点哪里">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M3 17l5-4 4 3 3-2 6 5"/></svg>
+    <input type="file" id="file" accept="image/*">
+  </label>
+  <textarea id="input" placeholder="发一个网址让我读；或者直接说任务（网页版只给建议，不代你点屏幕）"></textarea>
+  <button class="btn solid" id="btnSend">发送</button>
+</div>
+<div class="hint">读完网页会自动总结；点左下角图片按钮可上传手机截图，模型会给出该点的坐标与下一步 JSON。</div>
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h2>接口与偏好</h2>
+    <div class="field"><label>API 站点（填到 /v1 或 /api/v3）</label><input id="cfgBase" placeholder="https://api.openai.com/v1"></div>
+    <div class="field"><label>API 密钥（只存本机 localStorage，直接发给你填的站点）</label><input id="cfgKey" type="password" placeholder="sk-..."></div>
+    <div class="field"><label>模型（识图模型或文本模型都行）</label><input id="cfgModel" placeholder="gpt-4o"></div>
+    <div class="field"><label>接口格式</label><select id="cfgFormat"><option value="openai">OpenAI 兼容（chat/completions）</option><option value="anthropic">Anthropic Claude（messages）</option></select></div>
+    <div class="field"><label>思考模式</label><select id="cfgThink"><option value="auto">自动（跟随模型）</option><option value="on">始终开启 thinking=enabled</option><option value="off">关闭 thinking=disabled</option></select></div>
+    <div class="field"><label>角色性格（写进系统提示词）</label><textarea id="cfgPersona" placeholder="沉稳、话不多，先看清再动手"></textarea></div>
+    <div class="field"><label>网页抓取代理（浏览器跨域限制，需要一个 CORS 代理；可换成你自己的）</label><input id="cfgProxy" placeholder="https://api.allorigins.win/raw?url="></div>
+    <div class="row"><button class="btn" id="btnClose">关闭</button><button class="btn solid" id="btnSave">保存</button></div>
+    <p class="note">网页版的边界：浏览器不能操作别的应用，所以这里只做「读网页 / 看截图 / 给动作建议」。真正模拟点击屏幕要靠安卓版 APK（无障碍 + 手势注入）。</p>
+  </div>
+</div>
+<script>
+var DEFAULTS = {base:"https://api.openai.com/v1",key:"",model:"gpt-4o",format:"openai",think:"auto",persona:"沉稳、话不多，先看清再动手",proxy:"https://api.allorigins.win/raw?url="};
+var cfg = loadCfg();
+var lastShot = null;
+function loadCfg(){try{var raw=localStorage.getItem("va_web_cfg");if(raw){var o=JSON.parse(raw);return Object.assign({},DEFAULTS,o);}}catch(e){}return Object.assign({},DEFAULTS);}
+function persist(){try{localStorage.setItem("va_web_cfg",JSON.stringify(cfg));}catch(e){}}
+var chat = document.getElementById("chat");
+function add(role,text,opt){opt=opt||{};var el=document.createElement("div");el.className="msg "+role;if(opt.image){var img=document.createElement("img");img.src=opt.image;el.appendChild(img);if(text){var p=document.createElement("div");p.textContent=text;el.appendChild(p);}}else{el.textContent=text||"";}if(opt.tag){var t=document.createElement("div");t.className="tag";t.textContent=opt.tag;el.appendChild(t);}chat.appendChild(el);chat.scrollTop=chat.scrollHeight;return el;}
+function sys(t){add("sys",t);}
+function err(t){add("err",t);}
+function refreshSub(){var sub=document.getElementById("sub");var dot=document.getElementById("dot");var ok=!!(cfg.base&&cfg.model);dot.className="dot"+(ok?" on":"");sub.textContent=ok?(cfg.model+" · "+(cfg.format==="anthropic"?"Claude":"OpenAI 兼容")):"未配置接口";}
+function extractUrl(text){var m=text.match(/https?:\/\/[^\s，。；、）\)\]】"'<>]+/i);if(m)return m[0];var m2=text.match(/((?:[a-zA-Z0-9\-]+\.)+[a-zA-Z]{2,}(?:\/[^\s]*)?)/);if(m2&&m2[1].indexOf(".")>0)return "https://"+m2[1];return null;}
+function isReadOnly(text){var url=extractUrl(text);if(!url)return false;var rest=text.replace(url,"").trim();if(rest.length===0)return true;return /^(读|看看|看一下|总结|概括|分析)/.test(rest)&&rest.length<=8;}
+function htmlToText(html){var title="";var tm=html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);if(tm)title=tm[1].replace(/\s+/g," ").trim();var body=html.replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<noscript[\s\S]*?<\/noscript>/gi," ").replace(/<head[\s\S]*?<\/head>/gi," ").replace(/<br\s*\/?>/gi,"\n").replace(/<\/(p|div|li|tr|h[1-6]|section|article)>/gi,"\n").replace(/<[^>]+>/g," ").replace(/&nbsp;/g," ").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&").replace(/[ \t\f\r]+/g," ").replace(/\n\s*\n+/g,"\n").trim();if(body.length>6000)body=body.slice(0,6000)+"…";return "标题："+(title||"(无)")+"\n正文：\n"+body;}
+function fetchPage(url){var proxy=(cfg.proxy||"").trim();var target=proxy.indexOf("url=")===proxy.length-4?proxy+encodeURIComponent(url):proxy+url;return fetch(target,{headers:{"Accept":"text/html,application/xhtml+xml,*/*"}}).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.text();}).then(function(t){if(/^<html/i.test(t.trim())||t.indexOf("<body")>-1)return htmlToText(t);return t.slice(0,6000);});}
+function sysPrompt(){var p="你是一个手机与网络操作助手，工作在网页端：你能读网页、看截图、给动作建议，但不能真的点击别人的屏幕。\n";p+="遇到截图时，请说明界面是什么、要达成目标下一步该点哪里（给出 0-1000 的相对坐标），并附一个可执行 JSON：{\"thought\":\"...\",\"action\":\"tap\",\"x\":500,\"y\":900}。\n";p+="动作可建议：tap / long_press / swipe / text / key / wait / browse / webread / shell。只输出一个 JSON 或简洁中文，别啰嗦。\n";if(cfg.persona)p+="角色设定："+cfg.persona+"\n";return p;}
+function baseHeaders(){var h={"Content-Type":"application/json"};if(cfg.format==="anthropic"){if(cfg.key)h["x-api-key"]=cfg.key;h["anthropic-version"]="2023-06-01";}else if(cfg.key){h["Authorization"]="Bearer "+cfg.key;}return h;}
+function looksReasoning(model){return /(o1|o3|o4|gpt-5|reasoner|qwq|qvq|thinking|r1|r2|kimi-k2|glm-5|mimo-v2|seed)/i.test(model||"");}
+function trimSlash(s){var t=(s||"").trim();while(t.endsWith("/"))t=t.slice(0,-1);return t;}
+function askModel(userText,imageDataUrl){
+  if(!cfg.base||!cfg.model){err("先在「设置」里填 API 站点和模型。");return Promise.resolve(null);}
+  var reasoning=cfg.think==="on"||looksReasoning(cfg.model);
+  var budget=reasoning?4096:1600;
+  var url,body,headers=baseHeaders();
+  if(cfg.format==="anthropic"){
+    url=trimSlash(cfg.base)+"/messages";
+    var blocks=[];
+    if(imageDataUrl){var parts=imageDataUrl.split(",");var media=(parts[0].match(/data:(.*?);/)||[])[1]||"image/jpeg";blocks.push({type:"image",source:{type:"base64",media_type:media,data:parts[1]}});}
+    blocks.push({type:"text",text:userText});
+    body={model:cfg.model,max_tokens:budget,system:sysPrompt(),messages:[{role:"user",content:blocks}]};
+    if(cfg.think==="on")body.thinking={type:"enabled",budget_tokens:2048};
+  }else{
+    url=trimSlash(cfg.base)+"/chat/completions";
+    var content=[{type:"text",text:userText}];
+    if(imageDataUrl)content.push({type:"image_url",image_url:{url:imageDataUrl,detail:"high"}});
+    body={model:cfg.model,messages:[{role:"system",content:sysPrompt()},{role:"user",content:imageDataUrl?content:userText}]};
+    if(reasoning&&/(o1|o3|o4|gpt-5)/i.test(cfg.model))body.max_completion_tokens=budget;else body.max_tokens=budget;
+    if(!reasoning)body.temperature=0.2;
+    if(cfg.think==="on")body.thinking={type:"enabled"};
+    if(cfg.think==="off")body.thinking={type:"disabled"};
+  }
+  return fetch(url,{method:"POST",headers:headers,body:JSON.stringify(body)}).then(function(r){return r.text().then(function(t){if(!r.ok)throw new Error("HTTP "+r.status+"："+t.slice(0,300));return JSON.parse(t);});}).then(function(j){
+    var out={content:"",reasoning:""};
+    if(cfg.format==="anthropic"){(j.content||[]).forEach(function(b){if(b.type==="text")out.content+=b.text||"";if(b.type==="thinking")out.reasoning+=b.thinking||"";});}
+    else{var c0=(j.choices||[])[0]||{};var m=c0.message||{};if(typeof m.content==="string")out.content=m.content;else if(Array.isArray(m.content))out.content=m.content.map(function(p){return p.text||"";}).join("");out.reasoning=m.reasoning_content||m.reasoning||"";out.finish=c0.finish_reason||"";}
+    return out;
+  });
+}
+function showAnswer(out){if(!out)return;if(out.reasoning)add("think","思考："+out.reasoning.slice(0,300));var text=out.content||(out.reasoning?"（模型只输出了思考，没有正文）":"（空回复）");var tag="";if(/\{[\s\S]*"action"[\s\S]*\}/.test(text))tag="下一步动作 JSON";add("ai",text,{tag:tag});if(out.finish==="length")sys("输出被截断，思考占满了额度。");}
+function send(){
+  var input=document.getElementById("input");
+  var text=input.value.trim();
+  if(!text)return;
+  input.value="";
+  add("user",text);
+  if(isReadOnly(text)){
+    var url=extractUrl(text);
+    sys("正在抓取 "+url+" …");
+    fetchPage(url).then(function(page){sys("已读到 "+page.length+" 字");return askModel("网页地址："+url+"\n\n"+page+"\n\n用中文总结这个网页：一句话说它是什么，再分点列关键信息，最后提示要注意的地方。");}).then(showAnswer).catch(function(e){err("读网页失败："+e.message+"\n换个代理（设置里的网页抓取代理）或直接粘贴正文给我。");});
+    return;
+  }
+  askModel(text).then(showAnswer).catch(function(e){err("调用接口失败："+e.message);});
+}
+function attachShot(){
+  var f=document.getElementById("file").files[0];
+  if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){lastShot=rd.result;add("user","（上传了一张截图）",{image:lastShot});sys("正在让模型看这张截图…");askModel("这是手机当前屏幕截图。请说明这是什么界面、任务大概能怎么进行，并给出下一步该点的位置（0-1000 相对坐标），最后附一个 JSON。",lastShot).then(showAnswer).catch(function(e){err("调用接口失败："+e.message);});};
+  rd.readAsDataURL(f);
+  document.getElementById("file").value="";
+}
+var modal=document.getElementById("modal");
+function openCfg(){document.getElementById("cfgBase").value=cfg.base;document.getElementById("cfgKey").value=cfg.key;document.getElementById("cfgModel").value=cfg.model;document.getElementById("cfgFormat").value=cfg.format;document.getElementById("cfgThink").value=cfg.think;document.getElementById("cfgPersona").value=cfg.persona;document.getElementById("cfgProxy").value=cfg.proxy;modal.classList.add("show");}
+function saveCfg(){cfg.base=document.getElementById("cfgBase").value.trim();cfg.key=document.getElementById("cfgKey").value.trim();cfg.model=document.getElementById("cfgModel").value.trim();cfg.format=document.getElementById("cfgFormat").value;cfg.think=document.getElementById("cfgThink").value;cfg.persona=document.getElementById("cfgPersona").value.trim();cfg.proxy=document.getElementById("cfgProxy").value.trim();persist();refreshSub();modal.classList.remove("show");sys("配置已保存。");}
+document.getElementById("btnCfg").onclick=openCfg;
+document.getElementById("btnClose").onclick=function(){modal.classList.remove("show");};
+document.getElementById("btnSave").onclick=saveCfg;
+document.getElementById("btnSend").onclick=send;
+document.getElementById("file").onchange=attachShot;
+document.getElementById("input").addEventListener("keydown",function(e){if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();send();}});
+modal.addEventListener("click",function(e){if(e.target===modal)modal.classList.remove("show");});
+refreshSub();
+sys("网页版只能读网页、看截图、给建议——真机上的点击由安卓版 APK 执行。");
+if(!cfg.key)sys("点右上角「设置」填 API 站点、密钥和模型，然后发一个网址试试。");
+</script>
+</body>
+</html>
